@@ -54,7 +54,8 @@ func scanSensors() {
 	response := Response{}
 
 	if err := getJSON(&response); err == nil {
-		GetDB().Exec(fmt.Sprintf("TRUNCATE TABLE `%s`", Sensors.TableName))
+		sensorsTable := GetDB().NewScope(&Sensors{}).TableName()
+		GetDB().Exec(fmt.Sprintf("TRUNCATE TABLE `%s`", fmt.Sprintf("TRUNCATE TABLE `%s`", sensorsTable)))
 		for _, v := range response.Dht22 {
 			if v.Status == "OK" {
 				GetDB().Create(&Sensors{Pin: v.Pin, Temperature: v.Temperature, Humidity: v.Humidity})
