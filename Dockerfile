@@ -1,13 +1,10 @@
-FROM golang:1.11.5
-
-#RUN apt-get update
-#RUN apt-get install vim -y
-RUN go get "github.com/go-sql-driver/mysql"
-RUN go get "github.com/gin-gonic/gin"
-RUN go get "github.com/jinzhu/gorm"
-
-
-WORKDIR /go/src/app
-COPY main.go main.go
-RUN go build ./main.go
+FROM golang:1.13-alpine
+WORKDIR /app
+ARG PORT_ENV=8084
+ARG HOST_SENSORS=192.168.0.49
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN go build -o main .
+EXPOSE 8084
 CMD ["./main"]
