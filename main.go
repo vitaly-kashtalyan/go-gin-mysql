@@ -55,27 +55,21 @@ func scanSensors() {
 
 	if err := getJSON(&response); err == nil {
 		tx := GetDB().Begin()
-		tx.Exec(fmt.Sprintf("TRUNCATE TABLE `%s`", GetDB().NewScope(&Sensors{}).TableName()))
-
 		for _, v := range response.Dht22 {
-			if v.Status == "OK" {
-				if err := tx.Create(&Sensors{Pin: v.Pin, Temperature: v.Temperature, Humidity: v.Humidity}).Error; err != nil {
-					tx.Rollback()
-					log.Println(err)
-				}
-				if err := tx.Create(&SensorsHistory{Pin: v.Pin, Temperature: v.Temperature, Humidity: v.Humidity}).Error; err != nil {
+			if v.Status == http.StatusText(http.StatusOK) {
+				if err := tx.Where(Sensors{Pin: v.Pin}).
+					Assign(Sensors{Pin: v.Pin, Temperature: v.Temperature, Humidity: v.Humidity, UpdatedAt: time.Now()}).
+					FirstOrCreate(&Sensors{}).Error; err != nil {
 					tx.Rollback()
 					log.Println(err)
 				}
 			}
 		}
 		for _, v := range response.Ds18b20 {
-			if v.Status == "OK" {
-				if err := tx.Create(&Sensors{Pin: v.Pin, Temperature: v.Temperature, DecSensor: v.Dec}).Error; err != nil {
-					tx.Rollback()
-					log.Println(err)
-				}
-				if err := tx.Create(&SensorsHistory{Pin: v.Pin, Temperature: v.Temperature, DecSensor: v.Dec}).Error; err != nil {
+			if v.Status == http.StatusText(http.StatusOK) {
+				if err := tx.Where(Sensors{Pin: v.Pin, DecSensor: v.Dec}).
+					Assign(Sensors{Pin: v.Pin, Temperature: v.Temperature, DecSensor: v.Dec, UpdatedAt: time.Now()}).
+					FirstOrCreate(&Sensors{}).Error; err != nil {
 					tx.Rollback()
 					log.Println(err)
 				}

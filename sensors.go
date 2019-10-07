@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jinzhu/gorm"
 	"net/http"
 	"time"
 )
@@ -11,7 +12,8 @@ type Sensors struct {
 	DecSensor   string    `gorm:"default:NULL" sql:"type:char(16);" binding:"min=16,max=16" json:"dec"`
 	Temperature float32   `gorm:"default:NULL" sql:"type:decimal(4,2);" json:"temperature"`
 	Humidity    float32   `gorm:"default:NULL" sql:"type:decimal(4,2);" json:"humidity"`
-	CreatedAt   time.Time `json:"date"`
+	CreatedAt   time.Time `json:"create_at"`
+	UpdatedAt   time.Time `json:"update_at"`
 }
 type SensorsHistory struct {
 	ID          uint      `gorm:"primary_key" json:"id"`
@@ -74,4 +76,16 @@ func ResStatus(ctx *gin.Context, code int) {
 		Message: http.StatusText(code),
 	}
 	ctx.JSON(http.StatusOK, er)
+}
+
+func (s *Sensors) AfterSave(scope *gorm.Scope) (err error) {
+	sensorsHistory := SensorsHistory{}
+	GetDB().Where(SensorsHistory{Pin: s.Pin, DecSensor: s.DecSensor}).
+		Order("created_at desc").
+		Limit(1).Find(&sensorsHistory)
+
+	if sensorsHistory.ID == 0 || sensorsHistory.ID > 0 && sensorsHistory.Temperature != s.Temperature {
+		GetDB().Create(SensorsHistory{Pin: s.Pin, DecSensor: s.DecSensor, Temperature: s.Temperature, Humidity: s.Humidity})
+	}
+	return
 }
