@@ -77,7 +77,7 @@ func scanSensors() {
 		}
 		tx.Commit()
 	} else {
-		log.Println(err)
+		log.Println("error getting json object: ", err)
 	}
 }
 
