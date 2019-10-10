@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
@@ -13,7 +14,7 @@ import (
 )
 
 func init() {
-	GetDB().Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&Sensors{}, &SensorsHistory{})
+	GetDB().Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&Sensors{}, &SensorsHistory{}, &RelayStateHistory{})
 }
 
 func main() {
@@ -47,13 +48,40 @@ func dataReadingService() {
 	nextTime = nextTime.Add(time.Minute)
 	time.Sleep(time.Until(nextTime))
 	scanSensors()
+	scanRelays()
 	go dataReadingService()
+}
+
+func scanRelays() {
+	relayStatus := RelayStatus{}
+	if err := getJSON("http://"+os.Getenv("HOST_RELAYS")+"/status", &relayStatus); err == nil {
+		if relayStatus.Status == http.StatusOK {
+
+			for relayId, state := range relayStatus.Data {
+				relayStateHistory := RelayStateHistory{}
+				GetDB().Where(RelayStateHistory{RelayId: sql.NullInt32{Int32: relayId, Valid: true}}).
+					Order("created_at desc").
+					Limit(1).Find(&relayStateHistory)
+
+				if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != state {
+					var newRecord = RelayStateHistory{
+						RelayId:   sql.NullInt32{Int32: relayId, Valid: true},
+						State:     sql.NullInt32{Int32: state, Valid: true},
+						CreatedAt: time.Now()}
+					if err := GetDB().Create(&newRecord).Error; err != nil {
+						log.Println("error creating relay history record: ", err)
+					}
+				}
+			}
+		}
+	} else {
+		log.Println("error getting json object: ", err)
+	}
 }
 
 func scanSensors() {
 	response := Response{}
-
-	if err := getJSON(&response); err == nil {
+	if err := getJSON("http://"+os.Getenv("HOST_SENSORS"), &response); err == nil {
 		tx := GetDB().Begin()
 		for _, v := range response.Dht22 {
 			if v.Status == http.StatusText(http.StatusOK) {
@@ -81,17 +109,16 @@ func scanSensors() {
 	}
 }
 
-func getJSON(result interface{}) error {
-	resp, err := http.Get("http://" + os.Getenv("HOST_SENSORS"))
+func getJSON(url string, result interface{}) error {
+	resp, err := http.Get(url)
 	if err != nil {
-		return fmt.Errorf("cannot fetch URL %q: %v", os.Getenv("HOST_SENSORS"), err)
+		return fmt.Errorf("cannot fetch URL %q: %v", url, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("unexpected http GET status: %s", resp.Status)
 	}
-	// We could check the resulting content type
-	// here if desired.
+
 	err = json.NewDecoder(resp.Body).Decode(result)
 	if err != nil {
 		return fmt.Errorf("cannot decode JSON: %v", err)

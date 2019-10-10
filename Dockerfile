@@ -4,6 +4,7 @@ ENV TZ Europe/Minsk
 WORKDIR /app
 ARG PORT_ENV=8084
 ARG HOST_SENSORS=192.168.0.49
+ARG HOST_RELAYS=192.168.0.8:8082
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .

@@ -20,6 +20,7 @@ services:
     environment:
       - PORT_ENV=8084
       - HOST_SENSORS=192.168.0.49
+      - HOST_RELAYS=192.168.0.8:8082
       - GIN_MODE=release
     ports:
       - 8084:8084

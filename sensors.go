@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
 	"net/http"
@@ -15,6 +16,7 @@ type Sensors struct {
 	CreatedAt   time.Time `json:"create_at"`
 	UpdatedAt   time.Time `json:"update_at"`
 }
+
 type SensorsHistory struct {
 	ID          uint      `gorm:"primary_key" json:"id"`
 	Pin         int       `gorm:"default:NULL" sql:"type:tinyint(3);index:idx_pin" binding:"required" json:"pin"`
@@ -24,12 +26,29 @@ type SensorsHistory struct {
 	CreatedAt   time.Time `sql:"index" json:"date"`
 }
 
+type RelayStateHistory struct {
+	ID        uint          `gorm:"primary_key" json:"id"`
+	RelayId   sql.NullInt32 `gorm:"default:NULL" sql:"type:tinyint(3);" binding:"required" json:"relay_id"`
+	State     sql.NullInt32 `gorm:"default:NULL" sql:"type:tinyint(3);" binding:"required" json:"state"`
+	CreatedAt time.Time     `json:"create_at"`
+}
+
+type RelayStatus struct {
+	Status  int             `json:"status"`
+	Message string          `json:"message"`
+	Data    map[int32]int32 `json:"data"`
+}
+
 func (Sensors) TableName() string {
 	return "sensors"
 }
 
 func (SensorsHistory) TableName() string {
 	return "sensors_history"
+}
+
+func (RelayStateHistory) TableName() string {
+	return "relay_history"
 }
 
 type dht22 struct {
