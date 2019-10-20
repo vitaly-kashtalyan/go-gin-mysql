@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/gin-gonic/gin"
 	"github.com/jinzhu/gorm"
+	"log"
 	"net/http"
 	"time"
 )
@@ -34,9 +35,14 @@ type RelayStateHistory struct {
 }
 
 type RelayStatus struct {
-	Status  int             `json:"status"`
-	Message string          `json:"message"`
-	Data    map[int32]int32 `json:"data"`
+	Status  int     `json:"status"`
+	Message string  `json:"message"`
+	Data    []Relay `json:"data"`
+}
+
+type Relay struct {
+	Id    int32 `json:"id"`
+	State int32 `json:"state"`
 }
 
 func (Sensors) TableName() string {
@@ -104,7 +110,14 @@ func (s *Sensors) AfterSave(scope *gorm.Scope) (err error) {
 		Limit(1).Find(&sensorsHistory)
 
 	if sensorsHistory.ID == 0 || sensorsHistory.ID > 0 && sensorsHistory.Temperature != s.Temperature {
-		GetDB().Create(SensorsHistory{Pin: s.Pin, DecSensor: s.DecSensor, Temperature: s.Temperature, Humidity: s.Humidity})
+		var newRecord = SensorsHistory{
+			Pin:         s.Pin,
+			DecSensor:   s.DecSensor,
+			Temperature: s.Temperature,
+			Humidity:    s.Humidity}
+		if err := GetDB().Create(&newRecord).Error; err != nil {
+			log.Println("error creating sensor history record: ", err)
+		}
 	}
 	return
 }

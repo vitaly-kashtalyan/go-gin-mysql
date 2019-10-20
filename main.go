@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jinzhu/gorm"
@@ -21,6 +22,7 @@ func main() {
 	dataReadingService()
 
 	r := gin.Default()
+	r.Use(cors.Default())
 	r.GET("/", func(c *gin.Context) {
 		var data []Sensors
 
@@ -54,19 +56,19 @@ func dataReadingService() {
 
 func scanRelays() {
 	relayStatus := RelayStatus{}
-	if err := getJSON("http://"+os.Getenv("HOST_RELAYS")+"/status", &relayStatus); err == nil {
+	if err := getJSON("http://"+os.Getenv("HOST_RELAYS"), &relayStatus); err == nil {
 		if relayStatus.Status == http.StatusOK {
 
-			for relayId, state := range relayStatus.Data {
+			for _, relay := range relayStatus.Data {
 				relayStateHistory := RelayStateHistory{}
-				GetDB().Where(RelayStateHistory{RelayId: sql.NullInt32{Int32: relayId, Valid: true}}).
+				GetDB().Where(RelayStateHistory{RelayId: sql.NullInt32{Int32: relay.Id, Valid: true}}).
 					Order("created_at desc").
 					Limit(1).Find(&relayStateHistory)
 
-				if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != state {
+				if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != relay.State {
 					var newRecord = RelayStateHistory{
-						RelayId:   sql.NullInt32{Int32: relayId, Valid: true},
-						State:     sql.NullInt32{Int32: state, Valid: true},
+						RelayId:   sql.NullInt32{Int32: relay.Id, Valid: true},
+						State:     sql.NullInt32{Int32: relay.State, Valid: true},
 						CreatedAt: time.Now()}
 					if err := GetDB().Create(&newRecord).Error; err != nil {
 						log.Println("error creating relay history record: ", err)
