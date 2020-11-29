@@ -12,7 +12,7 @@ var db *gorm.DB
 func connect() *gorm.DB {
 	var err error
 
-	db, err = gorm.Open("mysql", "db_user:db_password@tcp(db:3306)/db_name?charset=utf8&parseTime=True&charset=utf8&loc=Local")
+	db, err = gorm.Open("mysql", os.Getenv("MYSQL_CONNECTION")+"?charset=utf8&parseTime=True&charset=utf8&loc=Local")
 	if err != nil {
 		log.Fatalf("Got error when connect database, the error is '%v'", err)
 	}

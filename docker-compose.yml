@@ -18,12 +18,12 @@ services:
     restart: always
     container_name: sensors_app
     environment:
-      - PORT_ENV=8084
-      - HOST_SENSORS=192.168.0.49
-      - HOST_RELAYS=192.168.0.8:8082
+      - SENSORS_HOST=192.168.0.49
+      - RELAYS_HOST=192.168.0.8:8072
+      - MYSQL_CONNECTION=db_user:db_password@tcp(db:3306)/db_name
       - GIN_MODE=release
     ports:
-      - 8084:8084
+      - 8084:8080
     tty: true
     depends_on:
       - db

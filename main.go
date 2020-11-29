@@ -14,6 +14,11 @@ import (
 	"time"
 )
 
+const (
+	SensorsHost = "SENSORS_HOST"
+	RelaysHost  = "RELAYS_HOST"
+)
+
 func init() {
 	GetDB().Set("gorm:table_options", "ENGINE=InnoDB").AutoMigrate(&Sensors{}, &SensorsHistory{}, &RelayStateHistory{})
 }
@@ -41,7 +46,7 @@ func main() {
 		ResOkData(c, data)
 	})
 
-	_ = r.Run(":" + os.Getenv("PORT_ENV"))
+	_ = r.Run()
 }
 
 // Call this function in a goroutine.
@@ -56,23 +61,20 @@ func dataReadingService() {
 
 func scanRelays() {
 	relayStatus := RelayStatus{}
-	if err := getJSON("http://"+os.Getenv("HOST_RELAYS"), &relayStatus); err == nil {
-		if relayStatus.Status == http.StatusOK {
+	if err := getJSON("http://"+getRelaysHost()+"/status", &relayStatus); err == nil {
+		for _, relay := range relayStatus.Relay {
+			relayStateHistory := RelayStateHistory{}
+			GetDB().Where(RelayStateHistory{RelayId: sql.NullInt32{Int32: relay.Id, Valid: true}}).
+				Order("created_at desc").
+				Limit(1).Find(&relayStateHistory)
 
-			for _, relay := range relayStatus.Data {
-				relayStateHistory := RelayStateHistory{}
-				GetDB().Where(RelayStateHistory{RelayId: sql.NullInt32{Int32: relay.Id, Valid: true}}).
-					Order("created_at desc").
-					Limit(1).Find(&relayStateHistory)
-
-				if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != relay.State {
-					var newRecord = RelayStateHistory{
-						RelayId:   sql.NullInt32{Int32: relay.Id, Valid: true},
-						State:     sql.NullInt32{Int32: relay.State, Valid: true},
-						CreatedAt: time.Now()}
-					if err := GetDB().Create(&newRecord).Error; err != nil {
-						log.Println("error creating relay history record: ", err)
-					}
+			if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != relay.State {
+				var newRecord = RelayStateHistory{
+					RelayId:   sql.NullInt32{Int32: relay.Id, Valid: true},
+					State:     sql.NullInt32{Int32: relay.State, Valid: true},
+					CreatedAt: time.Now()}
+				if err := GetDB().Create(&newRecord).Error; err != nil {
+					log.Println("error creating relay history record: ", err)
 				}
 			}
 		}
@@ -83,7 +85,7 @@ func scanRelays() {
 
 func scanSensors() {
 	response := Response{}
-	if err := getJSON("http://"+os.Getenv("HOST_SENSORS"), &response); err == nil {
+	if err := getJSON("http://"+getSensorsHost(), &response); err == nil {
 		tx := GetDB().Begin()
 		for _, v := range response.Dht22 {
 			if v.Status == http.StatusText(http.StatusOK) {
@@ -126,4 +128,12 @@ func getJSON(url string, result interface{}) error {
 		return fmt.Errorf("cannot decode JSON: %v", err)
 	}
 	return nil
+}
+
+func getRelaysHost() string {
+	return os.Getenv(RelaysHost)
+}
+
+func getSensorsHost() string {
+	return os.Getenv(SensorsHost)
 }

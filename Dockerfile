@@ -1,13 +1,13 @@
-FROM golang:1.13-alpine
-RUN apk add --no-cache tzdata
-ENV TZ Europe/Minsk
+FROM golang:1.15-alpine AS build
 WORKDIR /app
-ARG PORT_ENV=8084
-ARG HOST_SENSORS=192.168.0.49
-ARG HOST_RELAYS=192.168.0.8:8082
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
 RUN go build -o main .
-EXPOSE 8084
+
+FROM alpine:latest
+RUN apk add --no-cache tzdata
+ENV TZ Europe/Minsk
+WORKDIR /root
+COPY --from=build /app/main .
 CMD ["./main"]

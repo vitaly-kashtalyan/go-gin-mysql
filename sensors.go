@@ -35,9 +35,7 @@ type RelayStateHistory struct {
 }
 
 type RelayStatus struct {
-	Status  int     `json:"status"`
-	Message string  `json:"message"`
-	Data    []Relay `json:"data"`
+	Relay []Relay `json:"relays"`
 }
 
 type Relay struct {
