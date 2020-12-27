@@ -68,14 +68,12 @@ func scanRelays() {
 				Order("created_at desc").
 				Limit(1).Find(&relayStateHistory)
 
-			if relayStateHistory.ID == 0 || relayStateHistory.ID > 0 && relayStateHistory.State.Int32 != relay.State {
-				var newRecord = RelayStateHistory{
-					RelayId:   sql.NullInt32{Int32: relay.Id, Valid: true},
-					State:     sql.NullInt32{Int32: relay.State, Valid: true},
-					CreatedAt: time.Now()}
-				if err := GetDB().Create(&newRecord).Error; err != nil {
-					log.Println("error creating relay history record: ", err)
-				}
+			var newRecord = RelayStateHistory{
+				RelayId:   sql.NullInt32{Int32: relay.Id, Valid: true},
+				State:     sql.NullInt32{Int32: relay.State, Valid: true},
+				CreatedAt: time.Now()}
+			if err := GetDB().Create(&newRecord).Error; err != nil {
+				log.Println("error creating relay history record: ", err)
 			}
 		}
 	} else {

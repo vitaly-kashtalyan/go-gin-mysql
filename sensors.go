@@ -102,20 +102,13 @@ func ResStatus(ctx *gin.Context, code int) {
 }
 
 func (s *Sensors) AfterSave(scope *gorm.Scope) (err error) {
-	sensorsHistory := SensorsHistory{}
-	GetDB().Where(SensorsHistory{Pin: s.Pin, DecSensor: s.DecSensor}).
-		Order("created_at desc").
-		Limit(1).Find(&sensorsHistory)
-
-	if sensorsHistory.ID == 0 || sensorsHistory.ID > 0 && sensorsHistory.Temperature != s.Temperature {
-		var newRecord = SensorsHistory{
-			Pin:         s.Pin,
-			DecSensor:   s.DecSensor,
-			Temperature: s.Temperature,
-			Humidity:    s.Humidity}
-		if err := GetDB().Create(&newRecord).Error; err != nil {
-			log.Println("error creating sensor history record: ", err)
-		}
+	var newRecord = SensorsHistory{
+		Pin:         s.Pin,
+		DecSensor:   s.DecSensor,
+		Temperature: s.Temperature,
+		Humidity:    s.Humidity}
+	if err := GetDB().Create(&newRecord).Error; err != nil {
+		log.Println("error creating sensor history record: ", err)
 	}
 	return
 }
