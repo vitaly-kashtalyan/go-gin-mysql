@@ -31,7 +31,8 @@ func main() {
 	r.GET("/", func(c *gin.Context) {
 		var data []Sensors
 
-		err := GetDB().Find(&data).Error
+		//err := GetDB().Find(&data).Error
+		err := GetDB().Raw("select id,pin,dec_sensor,round(avg(temperature), 2) as temperature,humidity,round(avg(humidity), 2) as humidity, created_at from sensors_history where created_at > (select updated_at from sensors order by updated_at desc limit 1) - INTERVAL 10 MINUTE group by pin, dec_sensor;").Scan(&data).Error
 		if err == gorm.ErrRecordNotFound {
 			ResStatus(c, http.StatusNotFound)
 			return
